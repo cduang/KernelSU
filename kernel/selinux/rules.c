@@ -6,8 +6,6 @@
 #include "selinux.h"
 #include "sepolicy.h"
 #include "ss/services.h"
-#include "linux/lsm_audit.h"
-#include "xfrm.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 #define SELINUX_POLICY_INSTEAD_SELINUX_SS
@@ -168,21 +166,6 @@ static int get_object(char *buf, char __user *user_object, size_t buf_sz,
 	return 0;
 }
 
-// reset avc cache table, otherwise the new rules will not take effect if already denied
-static void reset_avc_cache() {
-#if ((KERNEL_VERSION(4, 14, 0) <= LINUX_VERSION_CODE) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 163))) || (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 212))
-#	avc_ss_reset(0);
-#	selnl_notify_policyload(0);
-#	selinux_status_update_policyload(0);
-#else
-#	struct selinux_avc *avc = selinux_state.avc;
-#	avc_ss_reset(avc, 0);
-#	selnl_notify_policyload(0);
-#	selinux_status_update_policyload(&selinux_state, 0);
-#endif
-#	selinux_xfrm_notify_policyload();
-}
-
 int handle_sepolicy(unsigned long arg3, void __user *arg4)
 {
 	if (!arg4) {
@@ -191,7 +174,7 @@ int handle_sepolicy(unsigned long arg3, void __user *arg4)
 
 	if (!getenforce()) {
 		pr_info("SELinux permissive or disabled, don't apply policies.");
-		return 0;
+		return -1;
 	}
 
 	struct sepol_data data;
@@ -451,15 +434,11 @@ int handle_sepolicy(unsigned long arg3, void __user *arg4)
 		}
 		ret = 0;
 	} else {
-		pr_err("sepol: unknown cmd: %d\n", cmd);
+		pr_err("sepol: unknown cmd: %d");
 	}
 
 exit:
 	rcu_read_unlock();
-
-	// only allow and xallow needs to reset avc cache, but we cannot do that because
-	// we are in atomic context. so we just reset it every time.
-	reset_avc_cache();
 
 	return ret;
 }
