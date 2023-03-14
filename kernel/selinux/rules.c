@@ -171,16 +171,16 @@ static int get_object(char *buf, char __user *user_object, size_t buf_sz,
 // reset avc cache table, otherwise the new rules will not take effect if already denied
 static void reset_avc_cache() {
 #if ((KERNEL_VERSION(4, 14, 0) <= LINUX_VERSION_CODE) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 163))) || (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 212))
-	avc_ss_reset(0);
-	selnl_notify_policyload(0);
-	selinux_status_update_policyload(0);
+#	avc_ss_reset(0);
+#	selnl_notify_policyload(0);
+#	selinux_status_update_policyload(0);
 #else
-	struct selinux_avc *avc = selinux_state.avc;
-	avc_ss_reset(avc, 0);
-	selnl_notify_policyload(0);
-	selinux_status_update_policyload(&selinux_state, 0);
+#	struct selinux_avc *avc = selinux_state.avc;
+#	avc_ss_reset(avc, 0);
+#	selnl_notify_policyload(0);
+#	selinux_status_update_policyload(&selinux_state, 0);
 #endif
-	selinux_xfrm_notify_policyload();
+#	selinux_xfrm_notify_policyload();
 }
 
 int handle_sepolicy(unsigned long arg3, void __user *arg4)
